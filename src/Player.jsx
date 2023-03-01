@@ -5,15 +5,20 @@ import * as THREE from "three";
 
 import { useKeyboardControls } from "@react-three/drei";
 import { useEffect, useRef, useState } from "react";
+import useGame from "./stores/useGame";
 
 export default function Player() {
     const model = useGLTF("./Sparrow/scene.gltf");
     const body = useRef();
     const [subscribeKeys, getKeys] = useKeyboardControls();
+
     const rapier = useRapier();
 
     const [smoothedCameraPosition] = useState(() => new THREE.Vector3(0, 0, 0));
     const [smoothedCameraTarget] = useState(() => new THREE.Vector3());
+
+    const start = useGame((state) => state.start);
+    const restart = useGame((state) => state.restart);
 
     const animations = useAnimations(model.animations);
 
@@ -42,7 +47,22 @@ export default function Player() {
         }
     };
 
+    const reset = () => {
+        body.current.setTranslation({ x: 0, y: 1, z: 0 }); // reset position
+        body.current.setLinvel({ x: 0, y: 0, z: 0 }); // reset linear velocity
+        body.current.setAngvel({ x: 0, y: 0, z: 0 }); // reset angular velocity
+        restart();
+    };
+
     useEffect(() => {
+        const unsubscribeReset = useGame.subscribe(
+            (state) => state.phase,
+            (value) => {
+                if (value === "ready") {
+                    reset();
+                }
+            }
+        );
         const unsubscribeJump = subscribeKeys(
             (state) => state.jump, // selector
             (value) => {
@@ -52,15 +72,27 @@ export default function Player() {
             }
         );
 
+        const unsubscribeAnyKey = subscribeKeys(
+            ({ forward, backward, leftward, rightward }) => {
+                if (forward || backward || leftward || rightward) {
+                    start();
+                }
+            }
+        );
+
         return () => {
             unsubscribeJump();
+            unsubscribeAnyKey();
+            unsubscribeReset();
         };
     }, []);
 
     useFrame((state, delta) => {
         // Controls
-        const { forward, backward, leftward, rightward } = getKeys();
-
+        const { forward, backward, leftward, rightward, resetting } = getKeys();
+        if (resetting) {
+            restart();
+        }
         const impulse = { x: 0, y: 0, z: 0 };
         const torque = { x: 0, y: 0, z: 0 };
 
@@ -110,6 +142,13 @@ export default function Player() {
 
         state.camera.position.copy(smoothedCameraPosition);
         state.camera.lookAt(smoothedCameraTarget);
+
+        /*
+         * Phase
+         */
+        if (bodyPosition.y < -4) {
+            reset();
+        }
     });
 
     return (
