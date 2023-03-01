@@ -5,16 +5,16 @@ import Lights from "./Lights.jsx";
 import Player from "./Player.jsx";
 
 export default function Experience() {
-  return (
-    <>
-      <OrbitControls makeDefault />
+    return (
+        <>
+            {/* <OrbitControls makeDefault /> */}
 
-      <Physics>
-        {/* <Debug /> */}
-        <Lights />
-        <Level />
-        <Player />
-      </Physics>
-    </>
-  );
+            <Physics>
+                {/* <Debug /> */}
+                <Lights />
+                <Level />
+                <Player />
+            </Physics>
+        </>
+    );
 }
